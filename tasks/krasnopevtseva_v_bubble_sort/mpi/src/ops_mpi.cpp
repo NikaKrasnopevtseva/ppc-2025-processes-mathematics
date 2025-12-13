@@ -51,6 +51,7 @@ bool KrasnopevtsevaVBubbleSortMPI::RunImpl() {
 
 std::vector<int> KrasnopevtsevaVBubbleSortMPI::DistributeData(const std::vector<int> &input, int rank, int kol) {
   int global_size = static_cast<int>(input.size());
+  MPI_Bcast(&global_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
   int chunk_size = global_size / kol;
   int remainder = global_size % kol;
@@ -168,13 +169,15 @@ void KrasnopevtsevaVBubbleSortMPI::MergeProc(std::vector<int> &data, int partner
 std::vector<int> KrasnopevtsevaVBubbleSortMPI::GatherData(const std::vector<int> &local_data, int rank, int kol,
                                                           size_t global_size) {
   std::vector<int> result;
+  std::vector<int> gathered_result;
 
   if (rank == 0) {
-    result.resize(global_size);
+    gathered_result.resize(global_size);
     size_t offset = 0;
     int my_size = static_cast<int>(local_data.size());
+
     if (my_size > 0) {
-      std::copy(local_data.begin(), local_data.end(), result.begin() + offset);
+      std::copy(local_data.begin(), local_data.end(), gathered_result.begin() + offset);
       offset += my_size;
     }
 
@@ -183,7 +186,7 @@ std::vector<int> KrasnopevtsevaVBubbleSortMPI::GatherData(const std::vector<int>
       MPI_Recv(&remote_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
       if (remote_size > 0 && offset + remote_size <= global_size) {
-        MPI_Recv(result.data() + offset, remote_size, MPI_INT, i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(gathered_result.data() + offset, remote_size, MPI_INT, i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         offset += remote_size;
       }
     }
@@ -193,6 +196,22 @@ std::vector<int> KrasnopevtsevaVBubbleSortMPI::GatherData(const std::vector<int>
 
     if (local_size > 0) {
       MPI_Send(local_data.data(), local_size, MPI_INT, 0, 1, MPI_COMM_WORLD);
+    }
+  }
+
+  if (rank == 0) {
+    result = gathered_result;
+    int result_size = static_cast<int>(global_size);
+    MPI_Bcast(&result_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    MPI_Bcast(gathered_result.data(), result_size, MPI_INT, 0, MPI_COMM_WORLD);
+  } else {
+    int result_size = 0;
+    MPI_Bcast(&result_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    if (result_size > 0) {
+      result.resize(result_size);
+      MPI_Bcast(result.data(), result_size, MPI_INT, 0, MPI_COMM_WORLD);
     }
   }
 
