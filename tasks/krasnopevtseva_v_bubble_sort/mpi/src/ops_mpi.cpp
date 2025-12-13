@@ -44,11 +44,7 @@ bool KrasnopevtsevaVBubbleSortMPI::RunImpl() {
 
   std::vector<int> result = GatherData(local_data, rank, kol, global_size);
 
-  if (rank == 0) {
-    GetOutput() = result;
-  } else {
-    GetOutput() = std::vector<int>();
-  }
+  GetOutput() = result;
 
   return true;
 }
