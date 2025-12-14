@@ -98,45 +98,36 @@ void KrasnopevtsevaVBubbleSortMPI::ParallelSort(std::vector<int> &local_data, in
     return;
   }
 
-  std::sort(local_data.begin(), local_data.end());
+  SeqSort(local_data);
 
-  int max_iterations = kol;
-
-  for (int iteration = 0; iteration < max_iterations; iteration++) {
-    bool is_even_phase = (iteration % 2 == 0);
+   for (int phase = 0; phase < kol; phase++) {
     int partner = -1;
     bool keep_smaller = false;
-
-    if (is_even_phase) {
-      if (rank % 2 == 0) {
-        if (rank + 1 < kol) {
-          partner = rank + 1;
-          keep_smaller = true;
-        }
-      } else {
-        if (rank - 1 >= 0) {
-          partner = rank - 1;
-          keep_smaller = false;
-        }
+    
+    if (phase % 2 == 0) {
+      // Четная фаза
+      if (rank % 2 == 0 && rank + 1 < kol) {
+        partner = rank + 1;
+        keep_smaller = true;
+      } else if (rank % 2 == 1 && rank - 1 >= 0) {
+        partner = rank - 1;
+        keep_smaller = false;
       }
     } else {
-      if (rank % 2 == 1) {
-        if (rank + 1 < kol) {
-          partner = rank + 1;
-          keep_smaller = true;
-        }
-      } else if (rank > 0) {
-        if (rank - 1 >= 0) {
-          partner = rank - 1;
-          keep_smaller = false;
-        }
+      // Нечетная фаза
+      if (rank % 2 == 1 && rank + 1 < kol) {
+        partner = rank + 1;
+        keep_smaller = true;
+      } else if (rank % 2 == 0 && rank > 0 && rank - 1 >= 0) {
+        partner = rank - 1;
+        keep_smaller = false;
       }
     }
-
+    
     if (partner != -1) {
       MergeProc(local_data, partner, keep_smaller);
     }
-
+    
     MPI_Barrier(MPI_COMM_WORLD);
   }
 }
@@ -168,53 +159,49 @@ void KrasnopevtsevaVBubbleSortMPI::MergeProc(std::vector<int> &data, int partner
 
 std::vector<int> KrasnopevtsevaVBubbleSortMPI::GatherData(const std::vector<int> &local_data, int rank, int kol,
                                                           size_t global_size) {
-  std::vector<int> result;
-  std::vector<int> gathered_result;
-
+   std::vector<int> result;
+  
   if (rank == 0) {
-    gathered_result.resize(global_size);
+    result.resize(global_size);
     size_t offset = 0;
+    
     int my_size = static_cast<int>(local_data.size());
-
     if (my_size > 0) {
-      std::copy(local_data.begin(), local_data.end(), gathered_result.begin() + offset);
+      std::copy(local_data.begin(), local_data.end(), result.begin() + offset);
       offset += my_size;
     }
-
+    
     for (int i = 1; i < kol; i++) {
       int remote_size = 0;
       MPI_Recv(&remote_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-      if (remote_size > 0 && offset + remote_size <= global_size) {
-        MPI_Recv(gathered_result.data() + offset, remote_size, MPI_INT, i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+      
+      if (remote_size > 0) {
+        MPI_Recv(result.data() + offset, remote_size, MPI_INT, i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         offset += remote_size;
       }
     }
   } else {
     int local_size = static_cast<int>(local_data.size());
     MPI_Send(&local_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-
+    
     if (local_size > 0) {
       MPI_Send(local_data.data(), local_size, MPI_INT, 0, 1, MPI_COMM_WORLD);
     }
   }
-
+  
+  int result_size = 0;
   if (rank == 0) {
-    result = gathered_result;
-    int result_size = static_cast<int>(global_size);
-    MPI_Bcast(&result_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-    MPI_Bcast(gathered_result.data(), result_size, MPI_INT, 0, MPI_COMM_WORLD);
-  } else {
-    int result_size = 0;
-    MPI_Bcast(&result_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-    if (result_size > 0) {
-      result.resize(result_size);
-      MPI_Bcast(result.data(), result_size, MPI_INT, 0, MPI_COMM_WORLD);
-    }
+    result_size = static_cast<int>(global_size);
   }
-
+  
+  MPI_Bcast(&result_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  
+  if (rank != 0) {
+    result.resize(result_size);
+  }
+  
+  MPI_Bcast(rank == 0 ? result.data() : result.data(), result_size, MPI_INT, 0, MPI_COMM_WORLD);
+  
   return result;
 }
 
@@ -246,5 +233,4 @@ void KrasnopevtsevaVBubbleSortMPI::SeqSort(std::vector<int> &data) {
 bool KrasnopevtsevaVBubbleSortMPI::PostProcessingImpl() {
   return true;
 }
-
 }  // namespace krasnopevtseva_v_bubble_sort
