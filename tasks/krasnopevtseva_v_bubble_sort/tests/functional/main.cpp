@@ -61,14 +61,20 @@ TEST_P(KrasnopevtsevaVBubbleSortFuncTests, Bubble_sort) {
   ExecuteTest(GetParam());
 }
 
-const std::array<TestType, 5> kTestParam = {
-    std::make_tuple(std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}, "sorted_array"),
-    std::make_tuple(std::vector<int>{5, 1, 3, 4, 2, 34, 4, 24, 16, 31, 666, 22, 14}, "default_array"),
+const std::array<TestType, 6> kTestParam = {
+    std::make_tuple(std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}, "sorted_array"),
+    std::make_tuple(std::vector<int>{5, 1, 3, 4, 2, 34, 24, 16, 31, 666, 22, 14, 52, 67, 13, 99, 9, 6, 28, 35},
+                    "default_array"),
     std::make_tuple(std::vector<int>{10, 1, 30, 2}, "short_array"),
-    std::make_tuple(std::vector<int>{10, 31, 120, 4,   2,     1000, 23,    34,   30,  42,  1,   45, 24, 15,  32,  111,
-                                     35, 25, 252, 222, 66234, 2325, 23423, 2355, 745, 579, 875, 33, 66, 345, 4666},
+    std::make_tuple(std::vector<int>{1000, 3246, 10,   31, 120, 4,   2,    1000, 23,    34,    30,   42,    1,
+                                     45,   24,   15,   32, 111, 35,  25,   252,  222,   66234, 2325, 23423, 2355,
+                                     745,  579,  875,  33, 66,  345, 4666, 2490, 100,   10,    3415, 234,   22,
+                                     526,  372,  8432, 21, 58,  225, 865,  23,   13333, 35,    2523, 33},
                     "long_array"),
-    std::make_tuple(std::vector<int>{10, 20, 20, 10, 20, 10, 20, 10, 20}, "two_number_array")};
+    std::make_tuple(std::vector<int>{10, 20, 20, 10, 20, 10, 20, 10, 20}, "two_number_array"),
+    std::make_tuple(std::vector<int>{10000, 9999, 9998, 4356, 3662, 3000, 2500, 2300, 2200, 2000, 1999, 1900,
+                                     1843,  1000, 10,   9,    8,    7,    6,    5,    4,    3,    2,    1},
+                    "end_to_begin_array")};
 
 const auto kTestTasksList = std::tuple_cat(
     ppc::util::AddFuncTask<KrasnopevtsevaVBubbleSortMPI, InType>(kTestParam, PPC_SETTINGS_krasnopevtseva_v_bubble_sort),
