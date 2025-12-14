@@ -29,17 +29,7 @@ bool KrasnopevtsevaVBubbleSortMPI::RunImpl() {
   int rank, kol;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &kol);
-  if (rank == 0) {
-    std::cout << "Input array (" << input.size() << "): ";
-    for (size_t i = 0; i < std::min(size_t(10), input.size()); i++) {
-      std::cout << input[i] << " ";
-    }
-    if (input.size() > 10) {
-      std::cout << "...";
-    }
-    std::cout << std::endl;
-  }
-  if (input.size() <= static_cast<size_t>(kol)) {
+  if (input.size() <= static_cast<size_t>(kol) || (kol == 1)) {
     SeqSort(input);
     GetOutput() = input;
     return true;
@@ -52,26 +42,6 @@ bool KrasnopevtsevaVBubbleSortMPI::RunImpl() {
   ParallelSort(local_data, rank, kol);
 
   std::vector<int> result = GatherData(local_data, rank, kol, global_size);
-  if (rank == 0 && !result.empty()) {
-    std::cout << "Result array (" << result.size() << "): ";
-    for (size_t i = 0; i < std::min(size_t(10), result.size()); i++) {
-      std::cout << result[i] << " ";
-    }
-    if (result.size() > 10) {
-      std::cout << "...";
-    }
-    std::cout << std::endl;
-
-    bool is_sorted = true;
-    for (size_t i = 1; i < result.size(); i++) {
-      if (result[i] < result[i - 1]) {
-        std::cout << "NOT SORTED at index " << i << ": " << result[i - 1] << " > " << result[i] << std::endl;
-        is_sorted = false;
-        break;
-      }
-    }
-    std::cout << "Array is " << (is_sorted ? "sorted" : "NOT sorted") << std::endl;
-  }
   GetOutput() = result;
 
   return true;

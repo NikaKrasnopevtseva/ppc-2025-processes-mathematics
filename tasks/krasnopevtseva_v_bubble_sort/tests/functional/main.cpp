@@ -64,7 +64,7 @@ TEST_P(KrasnopevtsevaVBubbleSortFuncTests, Bubble_sort) {
 const std::array<TestType, 5> kTestParam = {
     std::make_tuple(std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}, "sorted_array"),
     std::make_tuple(std::vector<int>{5, 1, 3, 4, 2, 34, 4, 24, 16, 31, 666, 22, 14}, "default_array"),
-    std::make_tuple(std::vector<int>{10, 1, 30}, "short_array"),
+    std::make_tuple(std::vector<int>{10, 1, 30, 2}, "short_array"),
     std::make_tuple(std::vector<int>{10, 31, 120, 4,   2,     1000, 23,    34,   30,  42,  1,   45, 24, 15,  32,  111,
                                      35, 25, 252, 222, 66234, 2325, 23423, 2355, 745, 579, 875, 33, 66, 345, 4666},
                     "long_array"),
