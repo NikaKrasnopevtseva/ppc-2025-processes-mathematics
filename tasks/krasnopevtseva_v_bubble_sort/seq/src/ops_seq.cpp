@@ -1,6 +1,8 @@
 #include "krasnopevtseva_v_bubble_sort/seq/include/ops_seq.hpp"
 
-#include <cmath>
+#include <algorithm>
+#include <cstddef>
+#include <vector>
 
 #include "krasnopevtseva_v_bubble_sort/common/include/common.hpp"
 
@@ -24,18 +26,18 @@ bool KrasnopevtsevaVBubbleSortSEQ::PreProcessingImpl() {
 
 bool KrasnopevtsevaVBubbleSortSEQ::RunImpl() {
   const auto &input = GetInput();
-  int size = input.size();
+  size_t size = input.size();
   std::vector<int> sort_v = input;
   bool is_sort = false;
   while (!is_sort) {
     is_sort = true;
-    for (int i = 0; i < size - 1; i += 2) {
+    for (size_t i = 0; i < size - 1; i += 2) {
       if (sort_v[i] > sort_v[i + 1]) {
         std::swap(sort_v[i], sort_v[i + 1]);
         is_sort = false;
       }
     }
-    for (int i = 1; i < size - 1; i += 2) {
+    for (size_t i = 1; i < size - 1; i += 2) {
       if (sort_v[i] > sort_v[i + 1]) {
         std::swap(sort_v[i], sort_v[i + 1]);
         is_sort = false;

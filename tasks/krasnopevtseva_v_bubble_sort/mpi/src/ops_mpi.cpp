@@ -2,7 +2,11 @@
 
 #include <mpi.h>
 
+#include <algorithm>
 #include <cmath>
+#include <cstddef>
+#include <utility>
+#include <vector>
 
 #include "krasnopevtseva_v_bubble_sort/common/include/common.hpp"
 
@@ -26,7 +30,8 @@ bool KrasnopevtsevaVBubbleSortMPI::PreProcessingImpl() {
 
 bool KrasnopevtsevaVBubbleSortMPI::RunImpl() {
   auto input = GetInput();
-  int rank, kol;
+  int rank = 0;
+  int kol = 0;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &kol);
   if (input.size() <= static_cast<size_t>(kol) || (kol == 1)) {
@@ -53,8 +58,7 @@ std::vector<int> KrasnopevtsevaVBubbleSortMPI::DistributeData(const std::vector<
 
   int chunk_size = global_size / kol;
   int remainder = global_size % kol;
-
-  int start_idx = rank * chunk_size + std::min(rank, remainder);
+  int start_idx = (rank * chunk_size) + std::min(rank, remainder);
   int end_idx = start_idx + chunk_size + (rank < remainder ? 1 : 0);
   int local_size = end_idx - start_idx;
 
@@ -66,7 +70,7 @@ std::vector<int> KrasnopevtsevaVBubbleSortMPI::DistributeData(const std::vector<
     }
 
     for (int i = 1; i < kol; i++) {
-      int i_start = i * chunk_size + std::min(i, remainder);
+      int i_start = (i * chunk_size) + std::min(i, remainder);
       int i_end = i_start + chunk_size + (i < remainder ? 1 : 0);
       int i_size = i_end - i_start;
 
@@ -82,12 +86,11 @@ std::vector<int> KrasnopevtsevaVBubbleSortMPI::DistributeData(const std::vector<
       local_data.resize(local_size);
       MPI_Recv(local_data.data(), local_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     } else {
-      int size;
+      int size = 0;
       MPI_Recv(&size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
       local_data.clear();
     }
   }
-
   return local_data;
 }
 
@@ -144,12 +147,12 @@ void KrasnopevtsevaVBubbleSortMPI::MergeProc(std::vector<int> &data, int partner
                1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
   std::vector<int> merged(my_size + partner_size);
-  std::merge(data.begin(), data.end(), partner_data.begin(), partner_data.end(), merged.begin());
+  std::ranges::merge(data.begin(), data.end(), partner_data.begin(), partner_data.end(), merged.begin());
 
   if (keep_smaller) {
-    std::copy(merged.begin(), merged.begin() + my_size, data.begin());
+    std::ranges::copy(merged.begin(), merged.begin() + my_size, data.begin());
   } else {
-    std::copy(merged.end() - my_size, merged.end(), data.begin());
+    std::ranges::copy(merged.end() - my_size, merged.end(), data.begin());
   }
 }
 
@@ -163,7 +166,7 @@ std::vector<int> KrasnopevtsevaVBubbleSortMPI::GatherData(const std::vector<int>
 
     int my_size = static_cast<int>(local_data.size());
     if (my_size > 0) {
-      std::copy(local_data.begin(), local_data.end(), result.begin() + offset);
+      std::ranges::copy(local_data.begin(), local_data.end(), result.begin() + static_cast<ptrdiff_t>(offset));
       offset += my_size;
     }
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 #include "krasnopevtseva_v_bubble_sort/common/include/common.hpp"
 #include "task/include/task.hpp"
 
@@ -17,11 +19,11 @@ class KrasnopevtsevaVBubbleSortMPI : public BaseTask {
   bool PreProcessingImpl() override;
   bool RunImpl() override;
   bool PostProcessingImpl() override;
-  std::vector<int> DistributeData(const std::vector<int> &input, int rank, int kol);
-  void ParallelSort(std::vector<int> &local_data, int rank, int kol);
-  void MergeProc(std::vector<int> &data, int partner_rank, bool keep_smaller);
-  std::vector<int> GatherData(const std::vector<int> &local_data, int rank, int kol, size_t global_size);
-  void SeqSort(std::vector<int> &data);
+  static std::vector<int> DistributeData(const std::vector<int> &input, int rank, int kol);
+  static void ParallelSort(std::vector<int> &local_data, int rank, int kol);
+  static void MergeProc(std::vector<int> &data, int partner_rank, bool keep_smaller);
+  static std::vector<int> GatherData(const std::vector<int> &local_data, int rank, int kol, size_t global_size);
+  static void SeqSort(std::vector<int> &data);
 };
 
 }  // namespace krasnopevtseva_v_bubble_sort

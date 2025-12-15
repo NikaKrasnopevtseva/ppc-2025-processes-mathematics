@@ -1,9 +1,10 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
-#include <cstdint>
+#include <cstddef>
 #include <random>
 #include <tuple>
+#include <vector>
 
 #include "krasnopevtseva_v_bubble_sort/common/include/common.hpp"
 #include "krasnopevtseva_v_bubble_sort/mpi/include/ops_mpi.hpp"
@@ -29,9 +30,9 @@ class KrasnopevtsevaVBubbleSortPerfTests : public ppc::util::BaseRunPerfTests<In
   }
 
   bool CheckTestOutputData(OutType &output_data) final {
-    int size = output_data.size();
+    size_t size = output_data.size();
     res_ = true;
-    for (int i = 0; i < size - 1; i++) {
+    for (size_t i = 0; i < size - 1; i++) {
       if (output_data[i] > output_data[i + 1]) {
         res_ = false;
       }

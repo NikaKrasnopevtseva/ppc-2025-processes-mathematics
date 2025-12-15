@@ -1,9 +1,7 @@
 #include <gtest/gtest.h>
 
-#include <algorithm>
 #include <cmath>
 #include <cstddef>
-#include <iostream>
 #include <string>
 
 #include "krasnopevtseva_v_bubble_sort/common/include/common.hpp"
@@ -18,9 +16,9 @@ class KrasnopevtsevaVBubbleSortFuncTests : public ppc::util::BaseRunFuncTests<In
  public:
   static std::string PrintTestParam(const TestType &test_param) {
     const auto &input = std::get<0>(test_param);
-    int size = input.size();
+    size_t size = input.size();
     std::string s;
-    for (int i = 0; i < size; i++) {
+    for (size_t i = 0; i < size; i++) {
       s += std::to_string(input[i]);
       if (i < size - 1) {
         s += "_";
@@ -40,9 +38,9 @@ class KrasnopevtsevaVBubbleSortFuncTests : public ppc::util::BaseRunFuncTests<In
   }
 
   bool CheckTestOutputData(OutType &output_data) final {
-    int size = output_data.size();
+    size_t size = output_data.size();
     bool result = true;
-    for (int i = 0; i < size - 1; i++) {
+    for (size_t i = 0; i < size - 1; i++) {
       if (output_data[i] > output_data[i + 1]) {
         result = false;
       }
