@@ -156,5 +156,8 @@ bool KrasnopevtsevaVBubbleSortMPI::RunImpl() {
       MPI_Barrier(MPI_COMM_WORLD);
     }
   }
+  std::vector<int> result = GatherData(local_data, rank, kol, global_size);
+  GetOutput() = result;
+  return true;
 }
 ```
