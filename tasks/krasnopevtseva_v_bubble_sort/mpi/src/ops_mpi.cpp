@@ -44,31 +44,51 @@ bool KrasnopevtsevaVBubbleSortMPI::RunImpl() {
 
   std::vector<int> local_data = DistributeData(input, rank, kol);
 
-  if (!local_data.empty() && kol > 1) {
-    SeqSort(local_data);
-
-    for (int phase = 0; phase < kol; phase++) {
-      int partner = -1;
-      bool keep_smaller = false;
-
-      if ((phase % 2 == 0 && rank % 2 == 0 && rank + 1 < kol) || (phase % 2 == 1 && rank % 2 == 1 && rank + 1 < kol)) {
-        partner = rank + 1;
-        keep_smaller = true;
-      } else if ((phase % 2 == 0 && rank % 2 == 1 && rank - 1 >= 0) || (phase % 2 == 1 && rank % 2 == 0 && rank > 0)) {
-        partner = rank - 1;
-        keep_smaller = false;
-      }
-      if (partner != -1) {
-        MergeProc(local_data, partner, keep_smaller);
-      }
-      MPI_Barrier(MPI_COMM_WORLD);
-    }
-  }
+  ParallelSort(local_data, rank, kol);
 
   std::vector<int> result = GatherData(local_data, rank, kol, global_size);
   GetOutput() = result;
 
   return true;
+}
+
+void KrasnopevtsevaVBubbleSortMPI::ParallelSort(std::vector<int> &local_data, int rank, int kol) {
+  if (local_data.empty() || kol <= 1) {
+    return;
+  }
+
+  SeqSort(local_data);
+
+  for (int phase = 0; phase < kol; phase++) {
+    int partner = FindPartner(rank, kol, phase);
+
+    if (partner != -1) {
+      bool keep_smaller = (rank < partner);
+      MergeProc(local_data, partner, keep_smaller);
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+  }
+}
+
+int KrasnopevtsevaVBubbleSortMPI::FindPartner(int rank, int kol, int phase) {
+  bool isEvenPhase = (phase % 2 == 0);
+  bool isEvenRank = (rank % 2 == 0);
+
+  if (isEvenPhase) {
+    if (isEvenRank && rank + 1 < kol) {
+      return rank + 1;
+    } else if (!isEvenRank && rank - 1 >= 0) {
+      return rank - 1;
+    }
+  } else {
+    if (!isEvenRank && rank + 1 < kol) {
+      return rank + 1;
+    } else if (isEvenRank && rank > 0) {
+      return rank - 1;
+    }
+  }
+  return -1;
 }
 
 std::vector<int> KrasnopevtsevaVBubbleSortMPI::DistributeData(const std::vector<int> &input, int rank, int kol) {

@@ -1,8 +1,10 @@
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <string>
+#include <tuple>
 
 #include "krasnopevtseva_v_bubble_sort/common/include/common.hpp"
 #include "krasnopevtseva_v_bubble_sort/mpi/include/ops_mpi.hpp"
@@ -55,7 +57,7 @@ class KrasnopevtsevaVBubbleSortFuncTests : public ppc::util::BaseRunFuncTests<In
 
 namespace {
 
-TEST_P(KrasnopevtsevaVBubbleSortFuncTests, Bubble_sort) {
+TEST_P(KrasnopevtsevaVBubbleSortFuncTests, BubbleSort) {
   ExecuteTest(GetParam());
 }
 

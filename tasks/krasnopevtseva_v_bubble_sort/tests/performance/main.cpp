@@ -3,7 +3,6 @@
 #include <cmath>
 #include <cstddef>
 #include <random>
-#include <tuple>
 #include <vector>
 
 #include "krasnopevtseva_v_bubble_sort/common/include/common.hpp"
