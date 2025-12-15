@@ -166,23 +166,14 @@ void KrasnopevtsevaVBubbleSortMPI::ParallelSort(std::vector<int> &local_data, in
 }
 
 int KrasnopevtsevaVBubbleSortMPI::FindPartner(int rank, int kol, int phase) {
-  bool isEvenPhase = (phase % 2 == 0);
-  bool isEvenRank = (rank % 2 == 0);
+  const bool is_even_phase = (phase % 2 == 0);
+  const bool is_even_rank = (rank % 2 == 0);
 
-  if (isEvenPhase) {
-    if (isEvenRank && rank + 1 < kol) {
-      return rank + 1;
-    } else if (!isEvenRank && rank - 1 >= 0) {
-      return rank - 1;
-    }
+  if (is_even_phase == is_even_rank) {
+    return (rank + 1 < kol) ? rank + 1 : -1;
   } else {
-    if (!isEvenRank && rank + 1 < kol) {
-      return rank + 1;
-    } else if (isEvenRank && rank > 0) {
-      return rank - 1;
-    }
+    return (rank > 0) ? rank - 1 : -1;
   }
-  return -1;
 }
 
 std::vector<int> KrasnopevtsevaVBubbleSortMPI::DistributeData(const std::vector<int> &input, int rank, int kol) {

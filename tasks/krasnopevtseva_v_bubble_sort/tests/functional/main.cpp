@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <string>
 #include <tuple>
+#include <vector>
 
 #include "krasnopevtseva_v_bubble_sort/common/include/common.hpp"
 #include "krasnopevtseva_v_bubble_sort/mpi/include/ops_mpi.hpp"
