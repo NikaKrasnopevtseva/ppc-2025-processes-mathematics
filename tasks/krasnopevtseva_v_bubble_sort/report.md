@@ -78,9 +78,8 @@
 
 Основные методы класса KrasnopevtsevaVBubbleSortMPI:  
 
-- RunImpl() — основная точка входа для MPI версии
+- RunImpl() — основная точка входа для MPI версии, реализация параллельной сортировки
 - DistributeData() — распределение данных между процессами
-- ParallelSort() — параллельная чет-нечетная сортировка
 - MergeProc() — попарное слияние данных между процессами
 - GatherData() — сбор результатов на всех процессах
 - SeqSort() — последовательная чет-нечетная сортировка
@@ -123,7 +122,8 @@
 ```cpp
 bool KrasnopevtsevaVBubbleSortMPI::RunImpl() {
   auto input = GetInput();
-  int rank, kol;
+  int rank = 0;
+  int kol = 0;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &kol);
   if (input.size() <= static_cast<size_t>(kol) || (kol == 1)) {
@@ -136,11 +136,25 @@ bool KrasnopevtsevaVBubbleSortMPI::RunImpl() {
 
   std::vector<int> local_data = DistributeData(input, rank, kol);
 
-  ParallelSort(local_data, rank, kol);
+  if (!local_data.empty() && kol > 1) {
+    SeqSort(local_data);
 
-  std::vector<int> result = GatherData(local_data, rank, kol, global_size);
-  GetOutput() = result;
+    for (int phase = 0; phase < kol; phase++) {
+      int partner = -1;
+      bool keep_smaller = false;
 
-  return true;
+      if ((phase % 2 == 0 && rank % 2 == 0 && rank + 1 < kol) || (phase % 2 == 1 && rank % 2 == 1 && rank + 1 < kol)) {
+        partner = rank + 1;
+        keep_smaller = true;
+      } else if ((phase % 2 == 0 && rank % 2 == 1 && rank - 1 >= 0) || (phase % 2 == 1 && rank % 2 == 0 && rank > 0)) {
+        partner = rank - 1;
+        keep_smaller = false;
+      }
+      if (partner != -1) {
+        MergeProc(local_data, partner, keep_smaller);
+      }
+      MPI_Barrier(MPI_COMM_WORLD);
+    }
+  }
 }
 ```
