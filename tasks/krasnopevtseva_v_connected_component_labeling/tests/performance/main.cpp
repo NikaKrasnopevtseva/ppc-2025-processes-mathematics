@@ -15,7 +15,6 @@ namespace krasnopevtseva_v_connected_component_labeling {
 
 class KrasnopevtsevaVCCLPerfTests : public ppc::util::BaseRunPerfTests<InType, OutType> {
   InType input_data_;
-  bool res_{};
 
   void SetUp() override {
     int height = 5000;
