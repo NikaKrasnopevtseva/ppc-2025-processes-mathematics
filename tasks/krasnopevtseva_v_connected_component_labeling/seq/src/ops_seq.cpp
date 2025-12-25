@@ -1,9 +1,10 @@
 #include "krasnopevtseva_v_connected_component_labeling/seq/include/ops_seq.hpp"
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <queue>
-#include <ranges>
 #include <tuple>
 #include <utility>
 #include <vector>

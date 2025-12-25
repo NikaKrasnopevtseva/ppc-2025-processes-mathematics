@@ -32,8 +32,8 @@ class KrasnopevtsevaVCCLFuncTests : public ppc::util::BaseRunFuncTests<InType, O
  private:
   InType input_data_;
 
-  bool CheckBasicProperties(const std::vector<int> &input_binary, const std::vector<int> &output_data, int height,
-                            int width) const {
+  [[nodiscard]] static bool CheckBasicProperties(const std::vector<int> &input_binary,
+                                                 const std::vector<int> &output_data, int height, int width) {
     const int total_pixels = height * width;
 
     if (output_data.size() != static_cast<size_t>(total_pixels)) {
@@ -52,8 +52,8 @@ class KrasnopevtsevaVCCLFuncTests : public ppc::util::BaseRunFuncTests<InType, O
     return true;
   }
 
-  bool CheckAdjacentConsistency(const std::vector<int> &input_binary, const std::vector<int> &output_data, int height,
-                                int width) const {
+  [[nodiscard]] static bool CheckAdjacentConsistency(const std::vector<int> &input_binary,
+                                                     const std::vector<int> &output_data, int height, int width) {
     for (int row = 0; row < height; ++row) {
       for (int col = 0; col < width; ++col) {
         const int idx = (row * width) + col;
@@ -85,8 +85,9 @@ class KrasnopevtsevaVCCLFuncTests : public ppc::util::BaseRunFuncTests<InType, O
     return true;
   }
 
-  bool CheckComponentConnectivity(const std::unordered_map<int, std::vector<int>> &label_to_indices,
-                                  const std::vector<int> &output_data, int height, int width) const {
+  [[nodiscard]] static bool CheckComponentConnectivity(
+      const std::unordered_map<int, std::vector<int>> &label_to_indices, const std::vector<int> &output_data,
+      int height, int width) {
     for (const auto &[label, indices] : label_to_indices) {
       if (indices.empty()) {
         continue;
@@ -97,7 +98,7 @@ class KrasnopevtsevaVCCLFuncTests : public ppc::util::BaseRunFuncTests<InType, O
 
       queue.push(indices[0]);
       visited[static_cast<size_t>(indices[0])] = true;
-      int visited_count = 1;
+      size_t visited_count = 1;
 
       while (!queue.empty()) {
         int current = queue.front();
@@ -121,7 +122,7 @@ class KrasnopevtsevaVCCLFuncTests : public ppc::util::BaseRunFuncTests<InType, O
         }
       }
 
-      if (visited_count != static_cast<int>(indices.size())) {
+      if (visited_count != indices.size()) {
         return false;
       }
     }
@@ -129,8 +130,9 @@ class KrasnopevtsevaVCCLFuncTests : public ppc::util::BaseRunFuncTests<InType, O
     return true;
   }
 
-  bool CheckLabelConsistencyAcrossComponents(const std::vector<int> &input_binary, const std::vector<int> &output_data,
-                                             int height, int width) const {
+  [[nodiscard]] static bool CheckLabelConsistencyAcrossComponents(const std::vector<int> &input_binary,
+                                                                  const std::vector<int> &output_data, int height,
+                                                                  int width) {
     for (int row = 0; row < height; ++row) {
       for (int col = 0; col < width; ++col) {
         const int idx = (row * width) + col;
@@ -155,7 +157,7 @@ class KrasnopevtsevaVCCLFuncTests : public ppc::util::BaseRunFuncTests<InType, O
     return true;
   }
 
-  bool CheckLabelNumbering(const std::vector<int> &output_data) const {
+  [[nodiscard]] static bool CheckLabelNumbering(const std::vector<int> &output_data) {
     std::vector<int> all_labels;
     for (int value : output_data) {
       if (value > 0) {
@@ -269,7 +271,7 @@ const std::array<TestType, 12> kTestParam = {
     for (int row = 0; row < 20; ++row) {
       for (int col = 0; col < 30; ++col) {
         if (col % 5 == 0) {  
-          data[static_cast<size_t>(row) * static_cast<size_t>(30) + static_cast<size_t>(col)] = 1;
+          data[(static_cast<size_t>(row) * static_cast<size_t>(30)) + static_cast<size_t>(col)] = 1;
         }
       }
     }
@@ -281,7 +283,7 @@ const std::array<TestType, 12> kTestParam = {
     for (int row = 0; row < 30; ++row) {
       for (int col = 0; col < 20; ++col) {
         if (row % 5 == 0) {  
-          data[static_cast<size_t>(row) * static_cast<size_t>(20) + static_cast<size_t>(col)] = 1;
+          data[(static_cast<size_t>(row) * static_cast<size_t>(20)) + static_cast<size_t>(col)] = 1;
         }
       }
     }
@@ -293,7 +295,7 @@ const std::array<TestType, 12> kTestParam = {
     for (int row = 0; row < 8; ++row) {
       for (int col = 0; col < 8; ++col) {
         if ((col + row) % 2 == 0) {
-          data[static_cast<size_t>(row) * static_cast<size_t>(8) + static_cast<size_t>(col)] = 1;
+          data[(static_cast<size_t>(row) * static_cast<size_t>(8)) + static_cast<size_t>(col)] = 1;
         }
       }
     }
@@ -306,7 +308,7 @@ const std::array<TestType, 12> kTestParam = {
     std::vector<int> data(static_cast<size_t>(17) * static_cast<size_t>(25), 0);
     for (int row = 5; row < 12; ++row) {
       for (int col = 8; col < 17; ++col) {
-        data[static_cast<size_t>(row) * static_cast<size_t>(25) + static_cast<size_t>(col)] = 1;
+        data[(static_cast<size_t>(row) * static_cast<size_t>(25)) + static_cast<size_t>(col)] = 1;
       }
     }
     return data;
@@ -315,7 +317,7 @@ const std::array<TestType, 12> kTestParam = {
   std::make_tuple(std::make_tuple(25, 25, []() {
     std::vector<int> data(625, 0);
     for (int index = 0; index < 25; ++index) {
-      data[static_cast<size_t>(index) * static_cast<size_t>(25) + static_cast<size_t>(index)] = 1;
+      data[(static_cast<size_t>(index) * static_cast<size_t>(25)) + static_cast<size_t>(index)] = 1;
     }
     return data;
   }()), "big_diagonal_25x25"),
@@ -325,7 +327,7 @@ const std::array<TestType, 12> kTestParam = {
     const std::array<int, 6> points = {2, 5, 8, 12, 15, 18};
     for (const int row : points) {
       for (const int col : points) {
-        const int idx = row * 20 + col;
+        const int idx = (row * 20) + col;
         if (idx < 400) {
           data[static_cast<size_t>(idx)] = 1;
         }

@@ -62,7 +62,7 @@ void InitializeUnionFind(std::vector<int> &parent, int max_label) {
 }
 
 int FindRoot(std::vector<int> &parent, int x) {
-  if (x < 0 || std::cmp_greater_equal(x, static_cast<int>(parent.size()))) {
+  if (x < 0 || static_cast<size_t>(x) >= parent.size()) {
     return x;
   }
   while (x != parent[x]) {
@@ -73,8 +73,7 @@ int FindRoot(std::vector<int> &parent, int x) {
 }
 
 void UniteLabels(std::vector<int> &parent, int a, int b) {
-  if (a < 0 || std::cmp_greater_equal(a, static_cast<int>(parent.size())) || b < 0 ||
-      std::cmp_greater_equal(b, static_cast<int>(parent.size()))) {
+  if (a < 0 || static_cast<size_t>(a) >= parent.size() || b < 0 || static_cast<size_t>(b) >= parent.size()) {
     return;
   }
   int ra = FindRoot(parent, a);
@@ -88,25 +87,37 @@ void UniteLabels(std::vector<int> &parent, int a, int b) {
   }
 }
 
+void ProcessRightConnection(int *p_global, int idx, std::vector<int> &parent) {
+  if (p_global[idx + 1] != 0 && p_global[idx] != p_global[idx + 1]) {
+    UniteLabels(parent, p_global[idx], p_global[idx + 1]);
+  }
+}
+
+void ProcessBottomConnection(int *p_global, int idx, int n_tmp, std::vector<int> &parent) {
+  if (p_global[idx + n_tmp] != 0 && p_global[idx] != p_global[idx + n_tmp]) {
+    UniteLabels(parent, p_global[idx], p_global[idx + n_tmp]);
+  }
+}
+
+void ProcessPixelConnections(int *p_global, int i, int j, int m_tmp, int n_tmp, std::vector<int> &parent) {
+  const int idx = (i * n_tmp) + j;
+  if (p_global[idx] == 0) {
+    return;
+  }
+
+  if (j + 1 < n_tmp) {
+    ProcessRightConnection(p_global, idx, parent);
+  }
+
+  if (i + 1 < m_tmp) {
+    ProcessBottomConnection(p_global, idx, n_tmp, parent);
+  }
+}
+
 void ProcessConnections(int *p_global, int m_tmp, int n_tmp, std::vector<int> &parent) {
   for (int i = 0; i < m_tmp; ++i) {
     for (int j = 0; j < n_tmp; ++j) {
-      const int idx = (i * n_tmp) + j;
-      if (p_global[idx] == 0) {
-        continue;
-      }
-
-      if (j + 1 < n_tmp && p_global[idx + 1] != 0) {
-        if (p_global[idx] != p_global[idx + 1]) {
-          UniteLabels(parent, p_global[idx], p_global[idx + 1]);
-        }
-      }
-
-      if (i + 1 < m_tmp && p_global[idx + n_tmp] != 0) {
-        if (p_global[idx] != p_global[idx + n_tmp]) {
-          UniteLabels(parent, p_global[idx], p_global[idx + n_tmp]);
-        }
-      }
+      ProcessPixelConnections(p_global, i, j, m_tmp, n_tmp, parent);
     }
   }
 }

@@ -2,8 +2,7 @@
 
 #include <array>
 #include <queue>
-#include <string>
-#include <tuple>
+#include <utility>
 #include <vector>
 
 #include "krasnopevtseva_v_connected_component_labeling/common/include/common.hpp"
