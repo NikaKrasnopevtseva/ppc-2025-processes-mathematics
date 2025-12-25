@@ -9,8 +9,8 @@
 Задача маркировки компонент связности на бинарном изображении является классической задачей компьютерного зрения и обработки изображений. Алгоритм находит и помечает связные области пикселей на бинарном изображении (0 - фон, 1 - объект). Эта задача имеет широкое применение в медицинской визуализации, распознавании объектов, анализе документов и других областях. Особую сложность представляет обработка больших изображений, где требуется высокая производительность.
 
 ## 2. Постановка задачи
-### Задача: реализация последовательной (SEQ) и параллельной (MPI) версий метода маркировки компонент на бинарном изображении.
 
+### Задача: реализация последовательной (SEQ) и параллельной (MPI) версий метода маркировки компонент на бинарном изображении.
 
 ### Формат входных данных:
 - Высота изображения (int)
@@ -30,9 +30,9 @@
 
 3. Если пиксель имеет значение 1 и не помечен:
 
-4. Запуск BFS для маркировки всей связной компоненты
+- Запуск BFS для маркировки всей связной компоненты
 
-5. Присвоение новой уникальной метки
+- Присвоение новой уникальной метки
 
 6. Продолжение до обработки всех пикселей
 
@@ -53,22 +53,30 @@
 - Распространение: результат рассылается всем процессам
 
 ### 4.1 Распределение данных
-Изображение делится по строкам между процессами:  
-Каждый процесс получает примерно равное количество строк  
+  
+Изображение размера M×N пикселей делится по строкам между P процессами:  
+
+Базовое количество строк на процесс: M / P  
+Дополнительные строки распределяются первым M % P процессам  
+
+Каждый процесс получает непрерывный блок строк  
+
 ### 4.2 Уникальные метки
 Для избежания конфликтов меток между процессами:  
-Каждый процесс начинает маркировку с уникальной базовой метки: (proc_rank + 1) × 1000000 + 1  
-Это гарантирует отсутствие пересечений между процессами
+Каждый процесс начинает маркировку с уникальной базовой метки: (proc_rank + 1) * 1000000 + 1  
+Это гарантирует отсутствие пересечений между процессами  
 ### 4.3 Объединение меток
 После сбора всех локальных меток:  
-Построение DSU для всех меток    
-Объединение меток соседних пикселей по границам  
-Перенумерация меток в последовательную нумерацию
+Построение DSU для всех меток      
+Объединение меток соседних пикселей по границам    
+Перенумерация меток в последовательную нумерацию  
 
 - RunImpl() - основной метод выполнения алгоритма
 - MakeMPIResult() - объединение и нормализация меток
 - MPIBfs() - локальная маркировка BFS
-- MakeNorm() - нормализация меток через DSU
+- MakeNorm() - нормализация меток
+- ProcessConnections() - обработка связей между пикселями
+ 
 ## 5. Детали реализации 
 
 Ключевые классы и функции: 
@@ -88,6 +96,7 @@
 
 ### 7.1 Корректность
 
+Все тесты проходят успешно для обеих реализаций (SEQ и MPI).
 
 ### 7.2 Производительность
 
@@ -117,71 +126,23 @@
 
 ## 9. Приложения
 ```cpp
-bool KrasnopevtsevaVCCLMPI::RunImpl() {
-  const auto &[height, width, data] = GetInput();
-  int m_tmp = height;
-  int n_tmp = width;
+std::vector<int> KrasnopevtsevaVCCLMPI::MakeMPIResult(const std::vector<int> &global_labels,
+                                                      int m_tmp, int n_tmp) {
+  const int total = m_tmp * n_tmp;
+  std::vector<int> result = global_labels;
+  int *p_global = result.data();
+
+  const int max_label = FindMaxLabel(p_global, total);
   
-  int proc_rank, proc_count;
-  MPI_Comm_rank(MPI_COMM_WORLD, &proc_rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &proc_count);
-  
-  MPI_Bcast(&m_tmp, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  MPI_Bcast(&n_tmp, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  
-  std::vector<int> counts(proc_count, 0);
-  std::vector<int> displacements(proc_count, 0);
-  
-  int base_rows = m_tmp / proc_count;
-  int extra_rows = m_tmp % proc_count;
-  int current_row = 0;
-  
-  for (int proc = 0; proc < proc_count; ++proc) {
-    int proc_rows = base_rows + (proc < extra_rows ? 1 : 0);
-    counts[proc] = proc_rows * n_tmp;
-    displacements[proc] = current_row * n_tmp;
-    current_row += proc_rows;
+  if ((max_label == 0) || (max_label > 10000000)) {
+    return result;
   }
+
+  std::vector<int> parent;
+  InitializeUnionFind(parent, max_label);
+  ProcessConnections(p_global, m_tmp, n_tmp, parent);
+  MakeNorm(total, parent, p_global);
   
-  int local_pixel_count = counts[proc_rank];
-  std::vector<int> local_image(local_pixel_count);
-  std::vector<int> local_labels(local_pixel_count, 0);
-  
-  MPI_Scatterv(data.data(), counts.data(), displacements.data(), MPI_INT,
-               local_image.data(), local_pixel_count, MPI_INT, 0, MPI_COMM_WORLD);
-  
-  if (local_pixel_count > 0) {
-    int local_rows = local_pixel_count / n_tmp;
-    int start_label = (proc_rank + 1) * 1000000 + 1;
-    MPIBfs(local_image.data(), local_pixel_count, local_labels.data(), 
-           start_label, local_rows, displacements[proc_rank] / n_tmp);
-  }
-  
-  std::vector<int> global_labels;
-  if (proc_rank == 0) {
-    global_labels.resize(m_tmp * n_tmp, 0);
-  }
-  
-  int* sendbuf = (local_pixel_count > 0) ? local_labels.data() : nullptr;
-  int sendcount = (local_pixel_count > 0) ? local_pixel_count : 0;
-  
-  MPI_Gatherv(sendbuf, sendcount, MPI_INT,
-              global_labels.data(), counts.data(), displacements.data(), MPI_INT,
-              0, MPI_COMM_WORLD);
-  
-  std::vector<int> final_result;
-  if (proc_rank == 0) {
-    final_result = MakeMPIResult(global_labels, m_tmp, n_tmp);
-  }
-  
-  int result_size = 0;
-  if (proc_rank == 0) result_size = final_result.size();
-  MPI_Bcast(&result_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  
-  if (proc_rank != 0) final_result.resize(result_size);
-  MPI_Bcast(final_result.data(), result_size, MPI_INT, 0, MPI_COMM_WORLD);
-  
-  GetOutput() = final_result;
-  return true;
+  return result;
 }
 ```

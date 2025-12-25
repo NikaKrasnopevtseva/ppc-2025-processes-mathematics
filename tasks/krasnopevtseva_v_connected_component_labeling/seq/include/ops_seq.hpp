@@ -22,7 +22,7 @@ class KrasnopevtsevaVCCLSEQ : public BaseTask {
   bool PreProcessingImpl() override;
   bool RunImpl() override;
   bool PostProcessingImpl() override;
-  void ProcessImage(const std::vector<int> &binary_data, std::vector<int> &output, int height, int width);
+  static void ProcessImage(const std::vector<int> &binary_data, std::vector<int> &output, int height, int width);
   static bool IsUnlabeledPixel(const std::vector<int> &binary_data, const std::vector<int> &output, int index);
   static void LabelConnectedComponent(const std::vector<int> &binary_data, std::vector<int> &output, int start_row,
                                       int start_col, int label, const std::array<std::pair<int, int>, 4> &directions,
