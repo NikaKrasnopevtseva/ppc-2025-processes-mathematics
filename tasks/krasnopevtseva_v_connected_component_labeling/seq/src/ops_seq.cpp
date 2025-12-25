@@ -1,10 +1,10 @@
 #include "krasnopevtseva_v_connected_component_labeling/seq/include/ops_seq.hpp"
 
 #include <cmath>
-#include <cstdint>
+#include <cstddef>
 #include <queue>
-#include <random>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include "krasnopevtseva_v_connected_component_labeling/common/include/common.hpp"
@@ -25,15 +25,11 @@ bool KrasnopevtsevaVCCLSEQ::ValidationImpl() {
   if (height <= 0 || width <= 0) {
     return false;
   }
-  if (static_cast<size_t>(height * width) != data.size()) {
+  const size_t total_size = static_cast<size_t>(height) * static_cast<size_t>(width);
+  if (total_size != data.size()) {
     return false;
   }
-  for (int pixel : data) {
-    if (pixel != 0 && pixel != 1) {
-      return false;
-    }
-  }
-  return true;
+  return std::ranges::all_of(data, [](int pixel) { return pixel == 0 || pixel == 1; });
 }
 
 bool KrasnopevtsevaVCCLSEQ::PreProcessingImpl() {
@@ -46,34 +42,34 @@ bool KrasnopevtsevaVCCLSEQ::RunImpl() {
   const auto &[height, width, binary_data] = GetInput();
   auto &output = GetOutput();
 
-  int total_pixels = height * width;
-  output.resize(total_pixels, 0);
+  const int total_pixels = height * width;
+  output.resize(static_cast<size_t>(total_pixels), 0);
 
-  std::vector<std::pair<int, int>> directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+  const std::array<std::pair<int, int>, 4> directions = {{{-1, 0}, {1, 0}, {0, -1}, {0, 1}}};
   int label = 1;
 
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width; ++x) {
-      int idx = y * width + x;
+  for (int row = 0; row < height; ++row) {
+    for (int col = 0; col < width; ++col) {
+      const int idx = (row * width) + col;
 
       if (binary_data[idx] == 1 && output[idx] == 0) {
-        std::queue<std::pair<int, int>> q;
-        q.push({y, x});
+        std::queue<std::pair<int, int>> queue;
+        queue.emplace(row, col);
         output[idx] = label;
 
-        while (!q.empty()) {
-          auto [current_y, current_x] = q.front();
-          q.pop();
+        while (!queue.empty()) {
+          auto [current_row, current_col] = queue.front();
+          queue.pop();
 
-          for (const auto &[dy, dx] : directions) {
-            int ny = current_y + dy;
-            int nx = current_x + dx;
+          for (const auto &[delta_row, delta_col] : directions) {
+            const int new_row = current_row + delta_row;
+            const int new_col = current_col + delta_col;
 
-            if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
-              int nidx = ny * width + nx;
-              if (binary_data[nidx] == 1 && output[nidx] == 0) {
-                output[nidx] = label;
-                q.push({ny, nx});
+            if (new_row >= 0 && new_row < height && new_col >= 0 && new_col < width) {
+              const int new_idx = (new_row * width) + new_col;
+              if (binary_data[new_idx] == 1 && output[new_idx] == 0) {
+                output[new_idx] = label;
+                queue.emplace(new_row, new_col);
               }
             }
           }
@@ -86,6 +82,7 @@ bool KrasnopevtsevaVCCLSEQ::RunImpl() {
 
   return true;
 }
+
 bool KrasnopevtsevaVCCLSEQ::PostProcessingImpl() {
   return true;
 }

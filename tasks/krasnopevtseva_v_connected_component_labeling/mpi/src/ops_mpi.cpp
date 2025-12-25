@@ -4,12 +4,11 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdint>
-#include <iostream>
 #include <queue>
-#include <random>
 #include <unordered_map>
 #include <vector>
+
+#include "krasnopevtseva_v_connected_component_labeling/common/include/common.hpp"
 
 namespace {
 void MakeNorm(int total, std::vector<int> &parent, int *p_global) {
@@ -32,7 +31,7 @@ void MakeNorm(int total, std::vector<int> &parent, int *p_global) {
   for (int i = 0; i < total; ++i) {
     if (p_global[i] != 0) {
       int root = find_rep(p_global[i]);
-      if (root_to_label.find(root) == root_to_label.end()) {
+      if (!root_to_label.contains(root)) {
         root_to_label[root] = next_label++;
       }
     }
@@ -64,17 +63,12 @@ bool KrasnopevtsevaVCCLMPI::ValidationImpl() {
   if (height <= 0 || width <= 0) {
     return false;
   }
-  if (static_cast<size_t>(height * width) != data.size()) {
+  const size_t total_size = static_cast<size_t>(height) * static_cast<size_t>(width);
+  if (total_size != data.size()) {
     return false;
   }
 
-  for (int pixel : data) {
-    if (pixel != 0 && pixel != 1) {
-      return false;
-    }
-  }
-
-  return true;
+  return std::ranges::all_of(data, [](int pixel) { return pixel == 0 || pixel == 1; });
 }
 
 bool KrasnopevtsevaVCCLMPI::PreProcessingImpl() {
@@ -88,7 +82,8 @@ bool KrasnopevtsevaVCCLMPI::RunImpl() {
   int m_tmp = height;
   int n_tmp = width;
 
-  int proc_rank, proc_count;
+  int proc_rank = 0;
+  int proc_count = 0;
   MPI_Comm_rank(MPI_COMM_WORLD, &proc_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &proc_count);
 
@@ -126,7 +121,7 @@ bool KrasnopevtsevaVCCLMPI::RunImpl() {
 
   std::vector<int> global_labels;
   if (proc_rank == 0) {
-    global_labels.resize(m_tmp * n_tmp, 0);
+    global_labels.resize(static_cast<size_t>(m_tmp) * static_cast<size_t>(n_tmp), 0);
   }
 
   int *sendbuf = (local_pixel_count > 0) ? local_labels.data() : nullptr;
@@ -142,7 +137,7 @@ bool KrasnopevtsevaVCCLMPI::RunImpl() {
 
   int result_size = 0;
   if (proc_rank == 0) {
-    result_size = final_result.size();
+    result_size = static_cast<int>(final_result.size());
   }
 
   MPI_Bcast(&result_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -162,7 +157,7 @@ bool KrasnopevtsevaVCCLMPI::PostProcessingImpl() {
   return true;
 }
 
-bool KrasnopevtsevaVCCLMPI::IsValidMPI(int nr, int nc, int local_rows, int n_tmp) const {
+bool KrasnopevtsevaVCCLMPI::IsValidMPI(int nr, int nc, int local_rows, int n_tmp) {
   return nr >= 0 && nr < local_rows && nc >= 0 && nc < n_tmp;
 }
 
@@ -174,7 +169,7 @@ void KrasnopevtsevaVCCLMPI::BFSCheck(const int *p_local_image, int curr_label, i
     int nr = cp.x + dir.x;
     int nc = cp.y + dir.y;
     if (IsValidMPI(nr, nc, local_rows, n_tmp)) {
-      int idx = nr * n_tmp + nc;
+      int idx = (nr * n_tmp) + nc;
       if (idx >= 0 && idx < local_rows * n_tmp) {
         if (p_local_image[idx] == 1 && p_local_labels[idx] == 0) {
           p_local_labels[idx] = curr_label;
@@ -211,17 +206,14 @@ void KrasnopevtsevaVCCLMPI::MPIBfs(int *p_local_image, int local_pixel_count, in
   }
 }
 
-std::vector<int> KrasnopevtsevaVCCLMPI::MakeMPIResult(const std::vector<int> &global_labels, int m_tmp,
-                                                      int n_tmp) const {
+std::vector<int> KrasnopevtsevaVCCLMPI::MakeMPIResult(const std::vector<int> &global_labels, int m_tmp, int n_tmp) {
   int total = m_tmp * n_tmp;
   std::vector<int> result = global_labels;
   int *p_global = result.data();
 
   int max_label = 0;
   for (int i = 0; i < total; ++i) {
-    if (p_global[i] > max_label) {
-      max_label = p_global[i];
-    }
+    max_label = std::max(p_global[i], max_label);
   }
 
   if ((max_label == 0) || (max_label > 10000000)) {
@@ -261,7 +253,7 @@ std::vector<int> KrasnopevtsevaVCCLMPI::MakeMPIResult(const std::vector<int> &gl
 
   for (int i = 0; i < m_tmp; ++i) {
     for (int j = 0; j < n_tmp; ++j) {
-      int idx = i * n_tmp + j;
+      int idx = (i * n_tmp) + j;
       if (p_global[idx] == 0) {
         continue;
       }
