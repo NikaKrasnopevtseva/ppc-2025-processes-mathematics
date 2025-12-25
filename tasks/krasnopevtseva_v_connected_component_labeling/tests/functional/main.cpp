@@ -32,14 +32,8 @@ class KrasnopevtsevaVCCLFuncTests : public ppc::util::BaseRunFuncTests<InType, O
  private:
   InType input_data_;
 
- protected:
-  void SetUp() override {
-    auto test_param = std::get<static_cast<size_t>(ppc::util::GTestParamIndex::kTestParams)>(GetParam());
-    input_data_ = std::get<0>(test_param);
-  }
-
-  bool CheckTestOutputData(OutType &output_data) final {
-    const auto &[height, width, input_binary] = input_data_;
+  bool CheckBasicProperties(const std::vector<int> &input_binary, const std::vector<int> &output_data, int height,
+                            int width) const {
     const int total_pixels = height * width;
 
     if (output_data.size() != static_cast<size_t>(total_pixels)) {
@@ -55,6 +49,11 @@ class KrasnopevtsevaVCCLFuncTests : public ppc::util::BaseRunFuncTests<InType, O
       }
     }
 
+    return true;
+  }
+
+  bool CheckAdjacentConsistency(const std::vector<int> &input_binary, const std::vector<int> &output_data, int height,
+                                int width) const {
     for (int row = 0; row < height; ++row) {
       for (int col = 0; col < width; ++col) {
         const int idx = (row * width) + col;
@@ -83,19 +82,17 @@ class KrasnopevtsevaVCCLFuncTests : public ppc::util::BaseRunFuncTests<InType, O
       }
     }
 
-    std::unordered_map<int, std::vector<int>> label_to_indices;
-    for (int index = 0; index < total_pixels; ++index) {
-      if (output_data[index] > 0) {
-        label_to_indices[output_data[index]].push_back(index);
-      }
-    }
+    return true;
+  }
 
+  bool CheckComponentConnectivity(const std::unordered_map<int, std::vector<int>> &label_to_indices,
+                                  const std::vector<int> &output_data, int height, int width) const {
     for (const auto &[label, indices] : label_to_indices) {
       if (indices.empty()) {
         continue;
       }
 
-      std::vector<bool> visited(static_cast<size_t>(total_pixels), false);
+      std::vector<bool> visited(static_cast<size_t>(height * width), false);
       std::queue<int> queue;
 
       queue.push(indices[0]);
@@ -129,6 +126,11 @@ class KrasnopevtsevaVCCLFuncTests : public ppc::util::BaseRunFuncTests<InType, O
       }
     }
 
+    return true;
+  }
+
+  bool CheckLabelConsistencyAcrossComponents(const std::vector<int> &input_binary, const std::vector<int> &output_data,
+                                             int height, int width) const {
     for (int row = 0; row < height; ++row) {
       for (int col = 0; col < width; ++col) {
         const int idx = (row * width) + col;
@@ -150,6 +152,10 @@ class KrasnopevtsevaVCCLFuncTests : public ppc::util::BaseRunFuncTests<InType, O
       }
     }
 
+    return true;
+  }
+
+  bool CheckLabelNumbering(const std::vector<int> &output_data) const {
     std::vector<int> all_labels;
     for (int value : output_data) {
       if (value > 0) {
@@ -172,6 +178,46 @@ class KrasnopevtsevaVCCLFuncTests : public ppc::util::BaseRunFuncTests<InType, O
         }
       }
     }
+
+    return true;
+  }
+
+ protected:
+  void SetUp() override {
+    auto test_param = std::get<static_cast<size_t>(ppc::util::GTestParamIndex::kTestParams)>(GetParam());
+    input_data_ = std::get<0>(test_param);
+  }
+
+  bool CheckTestOutputData(OutType &output_data) final {
+    const auto &[height, width, input_binary] = input_data_;
+
+    if (!CheckBasicProperties(input_binary, output_data, height, width)) {
+      return false;
+    }
+
+    if (!CheckAdjacentConsistency(input_binary, output_data, height, width)) {
+      return false;
+    }
+
+    std::unordered_map<int, std::vector<int>> label_to_indices;
+    for (int index = 0; index < height * width; ++index) {
+      if (output_data[index] > 0) {
+        label_to_indices[output_data[index]].push_back(index);
+      }
+    }
+
+    if (!CheckComponentConnectivity(label_to_indices, output_data, height, width)) {
+      return false;
+    }
+
+    if (!CheckLabelConsistencyAcrossComponents(input_binary, output_data, height, width)) {
+      return false;
+    }
+
+    if (!CheckLabelNumbering(output_data)) {
+      return false;
+    }
+
     return true;
   }
 

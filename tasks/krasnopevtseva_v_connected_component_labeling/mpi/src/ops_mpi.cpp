@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <queue>
 #include <unordered_map>
 #include <vector>
@@ -41,6 +42,71 @@ void MakeNorm(int total, std::vector<int> &parent, int *p_global) {
     if (p_global[i] != 0) {
       int root = find_rep(p_global[i]);
       p_global[i] = root_to_label[root];
+    }
+  }
+}
+
+int FindMaxLabel(const int *p_global, int total) {
+  int max_label = 0;
+  for (int i = 0; i < total; ++i) {
+    max_label = std::max(p_global[i], max_label);
+  }
+  return max_label;
+}
+
+void InitializeUnionFind(std::vector<int> &parent, int max_label) {
+  parent.resize(max_label + 1);
+  for (int i = 0; i <= max_label; ++i) {
+    parent[i] = i;
+  }
+}
+
+int FindRoot(std::vector<int> &parent, int x) {
+  if (x < 0 || std::cmp_greater_equal(x, static_cast<int>(parent.size()))) {
+    return x;
+  }
+  while (x != parent[x]) {
+    parent[x] = parent[parent[x]];
+    x = parent[x];
+  }
+  return x;
+}
+
+void UniteLabels(std::vector<int> &parent, int a, int b) {
+  if (a < 0 || std::cmp_greater_equal(a, static_cast<int>(parent.size())) || b < 0 ||
+      std::cmp_greater_equal(b, static_cast<int>(parent.size()))) {
+    return;
+  }
+  int ra = FindRoot(parent, a);
+  int rb = FindRoot(parent, b);
+  if (ra != rb) {
+    if (ra < rb) {
+      parent[rb] = ra;
+    } else {
+      parent[ra] = rb;
+    }
+  }
+}
+
+void ProcessConnections(int *p_global, int m_tmp, int n_tmp, std::vector<int> &parent) {
+  for (int i = 0; i < m_tmp; ++i) {
+    for (int j = 0; j < n_tmp; ++j) {
+      const int idx = (i * n_tmp) + j;
+      if (p_global[idx] == 0) {
+        continue;
+      }
+
+      if (j + 1 < n_tmp && p_global[idx + 1] != 0) {
+        if (p_global[idx] != p_global[idx + 1]) {
+          UniteLabels(parent, p_global[idx], p_global[idx + 1]);
+        }
+      }
+
+      if (i + 1 < m_tmp && p_global[idx + n_tmp] != 0) {
+        if (p_global[idx] != p_global[idx + n_tmp]) {
+          UniteLabels(parent, p_global[idx], p_global[idx + n_tmp]);
+        }
+      }
     }
   }
 }
@@ -114,7 +180,7 @@ bool KrasnopevtsevaVCCLMPI::RunImpl() {
 
   if (local_pixel_count > 0) {
     int local_rows = local_pixel_count / n_tmp;
-    int start_label = (proc_rank + 1) * 1000000 + 1;
+    int start_label = ((proc_rank + 1) * 1000000) + 1;
 
     MPIBfs(local_image.data(), local_pixel_count, local_labels.data(), start_label, local_rows);
   }
@@ -162,7 +228,7 @@ bool KrasnopevtsevaVCCLMPI::IsValidMPI(int nr, int nc, int local_rows, int n_tmp
 }
 
 void KrasnopevtsevaVCCLMPI::BFSCheck(const int *p_local_image, int curr_label, int *p_local_labels, int local_rows,
-                                     Point cp, std::queue<Point> &bfs_queue, int n_tmp) const {
+                                     Point cp, std::queue<Point> &bfs_queue, int n_tmp) {
   const std::vector<Point> directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
 
   for (const auto &dir : directions) {
@@ -207,72 +273,21 @@ void KrasnopevtsevaVCCLMPI::MPIBfs(int *p_local_image, int local_pixel_count, in
 }
 
 std::vector<int> KrasnopevtsevaVCCLMPI::MakeMPIResult(const std::vector<int> &global_labels, int m_tmp, int n_tmp) {
-  int total = m_tmp * n_tmp;
+  const int total = m_tmp * n_tmp;
   std::vector<int> result = global_labels;
   int *p_global = result.data();
 
-  int max_label = 0;
-  for (int i = 0; i < total; ++i) {
-    max_label = std::max(p_global[i], max_label);
-  }
+  const int max_label = FindMaxLabel(p_global, total);
 
   if ((max_label == 0) || (max_label > 10000000)) {
     return result;
   }
 
-  std::vector<int> parent(max_label + 1);
-  for (int i = 0; i <= max_label; ++i) {
-    parent[i] = i;
-  }
-
-  auto find = [&parent](int x) -> int {
-    if (x < 0 || x >= static_cast<int>(parent.size())) {
-      return x;
-    }
-    while (x != parent[x]) {
-      parent[x] = parent[parent[x]];
-      x = parent[x];
-    }
-    return x;
-  };
-
-  auto unite = [&find, &parent](int a, int b) {
-    if (a < 0 || a >= static_cast<int>(parent.size()) || b < 0 || b >= static_cast<int>(parent.size())) {
-      return;
-    }
-    int ra = find(a);
-    int rb = find(b);
-    if (ra != rb) {
-      if (ra < rb) {
-        parent[rb] = ra;
-      } else {
-        parent[ra] = rb;
-      }
-    }
-  };
-
-  for (int i = 0; i < m_tmp; ++i) {
-    for (int j = 0; j < n_tmp; ++j) {
-      int idx = (i * n_tmp) + j;
-      if (p_global[idx] == 0) {
-        continue;
-      }
-
-      if (j + 1 < n_tmp && p_global[idx + 1] != 0) {
-        if (p_global[idx] != p_global[idx + 1]) {
-          unite(p_global[idx], p_global[idx + 1]);
-        }
-      }
-
-      if (i + 1 < m_tmp && p_global[idx + n_tmp] != 0) {
-        if (p_global[idx] != p_global[idx + n_tmp]) {
-          unite(p_global[idx], p_global[idx + n_tmp]);
-        }
-      }
-    }
-  }
-
+  std::vector<int> parent;
+  InitializeUnionFind(parent, max_label);
+  ProcessConnections(p_global, m_tmp, n_tmp, parent);
   MakeNorm(total, parent, p_global);
+
   return result;
 }
 }  // namespace krasnopevtseva_v_connected_component_labeling

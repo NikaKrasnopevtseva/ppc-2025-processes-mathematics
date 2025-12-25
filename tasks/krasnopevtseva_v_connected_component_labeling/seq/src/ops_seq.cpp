@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstddef>
 #include <queue>
+#include <ranges>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -45,6 +46,13 @@ bool KrasnopevtsevaVCCLSEQ::RunImpl() {
   const int total_pixels = height * width;
   output.resize(static_cast<size_t>(total_pixels), 0);
 
+  ProcessImage(binary_data, output, height, width);
+
+  return true;
+}
+
+void KrasnopevtsevaVCCLSEQ::ProcessImage(const std::vector<int> &binary_data, std::vector<int> &output, int height,
+                                         int width) {
   const std::array<std::pair<int, int>, 4> directions = {{{-1, 0}, {1, 0}, {0, -1}, {0, 1}}};
   int label = 1;
 
@@ -52,35 +60,55 @@ bool KrasnopevtsevaVCCLSEQ::RunImpl() {
     for (int col = 0; col < width; ++col) {
       const int idx = (row * width) + col;
 
-      if (binary_data[idx] == 1 && output[idx] == 0) {
-        std::queue<std::pair<int, int>> queue;
-        queue.emplace(row, col);
-        output[idx] = label;
-
-        while (!queue.empty()) {
-          auto [current_row, current_col] = queue.front();
-          queue.pop();
-
-          for (const auto &[delta_row, delta_col] : directions) {
-            const int new_row = current_row + delta_row;
-            const int new_col = current_col + delta_col;
-
-            if (new_row >= 0 && new_row < height && new_col >= 0 && new_col < width) {
-              const int new_idx = (new_row * width) + new_col;
-              if (binary_data[new_idx] == 1 && output[new_idx] == 0) {
-                output[new_idx] = label;
-                queue.emplace(new_row, new_col);
-              }
-            }
-          }
-        }
-
+      if (IsUnlabeledPixel(binary_data, output, idx)) {
+        LabelConnectedComponent(binary_data, output, row, col, label, directions, height, width);
         label++;
       }
     }
   }
+}
 
-  return true;
+bool KrasnopevtsevaVCCLSEQ::IsUnlabeledPixel(const std::vector<int> &binary_data, const std::vector<int> &output,
+                                             int index) {
+  return binary_data[index] == 1 && output[index] == 0;
+}
+
+void KrasnopevtsevaVCCLSEQ::LabelConnectedComponent(const std::vector<int> &binary_data, std::vector<int> &output,
+                                                    int start_row, int start_col, int label,
+                                                    const std::array<std::pair<int, int>, 4> &directions, int height,
+                                                    int width) {
+  std::queue<std::pair<int, int>> queue;
+  queue.emplace(start_row, start_col);
+  output[(start_row * width) + start_col] = label;
+
+  while (!queue.empty()) {
+    auto [current_row, current_col] = queue.front();
+    queue.pop();
+
+    ExploreNeighbors(binary_data, output, current_row, current_col, label, directions, height, width, queue);
+  }
+}
+
+void KrasnopevtsevaVCCLSEQ::ExploreNeighbors(const std::vector<int> &binary_data, std::vector<int> &output,
+                                             int current_row, int current_col, int label,
+                                             const std::array<std::pair<int, int>, 4> &directions, int height,
+                                             int width, std::queue<std::pair<int, int>> &queue) {
+  for (const auto &[delta_row, delta_col] : directions) {
+    const int new_row = current_row + delta_row;
+    const int new_col = current_col + delta_col;
+
+    if (IsValidPosition(new_row, new_col, height, width)) {
+      const int new_idx = (new_row * width) + new_col;
+      if (IsUnlabeledPixel(binary_data, output, new_idx)) {
+        output[new_idx] = label;
+        queue.emplace(new_row, new_col);
+      }
+    }
+  }
+}
+
+bool KrasnopevtsevaVCCLSEQ::IsValidPosition(int row, int col, int height, int width) {
+  return row >= 0 && row < height && col >= 0 && col < width;
 }
 
 bool KrasnopevtsevaVCCLSEQ::PostProcessingImpl() {
